@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+db:
+  host: localhost
+  port: 5432
+  user: kritsana
+  password: 123456
+  dbname: medium
+  sslmode: disable
+  timezone: Asia/Bangkok
+
+jwt:
+  jwt_secret: my_super_secret_key
+  access_token_expired: 15m
+  refresh_token_expired: 168h
+  issuer: mudium

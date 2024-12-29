@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: medium-postgres
+    environment:
+      POSTGRES_DB: medium
+      POSTGRES_USER: kritsana
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - medium-network
+
+volumes:
+  postgres_data:
+
+networks:
+  medium-network:
+    driver: bridge

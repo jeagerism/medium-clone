@@ -1,0 +1,14 @@
+-- down.sql
+
+-- Drop tables in reverse order
+DROP TABLE IF EXISTS "article_tags" CASCADE;
+DROP TABLE IF EXISTS "tags" CASCADE;
+DROP TABLE IF EXISTS "tokens" CASCADE;
+DROP TABLE IF EXISTS "images" CASCADE;
+DROP TABLE IF EXISTS "follows" CASCADE;
+DROP TABLE IF EXISTS "comments" CASCADE;
+DROP TABLE IF EXISTS "articles" CASCADE;
+DROP TABLE IF EXISTS "payment_records" CASCADE;
+DROP TABLE IF EXISTS "user_subscriptions" CASCADE;
+DROP TABLE IF EXISTS "membership_plans" CASCADE;
+DROP TABLE IF EXISTS "users" CASCADE;

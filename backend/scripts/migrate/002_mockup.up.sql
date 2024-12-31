@@ -1,13 +1,12 @@
 -- mockup_up.sql
+-- Insert a user
+INSERT INTO "users" ("name", "email", "password_hash") 
+VALUES ('John Doe', 'john.doe@example.com', 'hashedpassword123');
 
 -- Insert sample membership plans
 INSERT INTO "membership_plans" ("name", "price", "duration_days") 
 VALUES ('Basic Plan', 9.99, 30), 
        ('Premium Plan', 19.99, 30);
-
--- Insert a user
-INSERT INTO "users" ("name", "email", "password_hash") 
-VALUES ('John Doe', 'john.doe@example.com', 'hashedpassword123');
 
 -- Insert a subscription
 INSERT INTO "user_subscriptions" ("user_id", "plan_id", "start_date", "end_date") 
@@ -35,3 +34,20 @@ VALUES ('Tech'), ('Science');
 
 INSERT INTO "article_tags" ("article_id", "tag_id") 
 VALUES (1, 1), (1, 2);
+
+INSERT INTO "likes" ("article_id", "user_id")
+VALUES (1,1);
+
+-- New 
+
+INSERT INTO "users" ("name", "email", "password_hash") 
+VALUES ('John Doe2', 'john2.doe@example.com', 'hashedpassword123');
+
+INSERT INTO "likes" ("article_id", "user_id")
+VALUES (1,2);
+
+INSERT INTO "comments" ("article_id", "user_id", "content") 
+VALUES (1, 2, 'Wow it's'Great article!');
+
+INSERT INTO "images" ("article_id", "image_url", "caption") 
+VALUES (1, 'image1', 'image caption');

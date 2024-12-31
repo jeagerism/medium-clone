@@ -22,7 +22,6 @@ services:
       "sleep 5; until nc -z medium-postgres 5432; do echo waiting for postgres; sleep 2; done; \
       migrate -source file://./migrations -database 'postgres://kritsana:123456@medium-postgres:5432/medium?sslmode=disable&TimeZone=Asia/Bangkok' up"
     ]
-
     volumes:
       - ./scripts/migrate:/migrations
     networks:

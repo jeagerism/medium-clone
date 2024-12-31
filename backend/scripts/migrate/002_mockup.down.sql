@@ -12,3 +12,4 @@ TRUNCATE TABLE "payment_records" CASCADE;
 TRUNCATE TABLE "user_subscriptions" CASCADE;
 TRUNCATE TABLE "membership_plans" CASCADE;
 TRUNCATE TABLE "users" CASCADE;
+TRUNCATE TABLE "likes" CASCADE;

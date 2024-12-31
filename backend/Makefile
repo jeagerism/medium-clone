@@ -30,7 +30,7 @@ up-prod:
 # Stop all running containers
 .PHONY: down
 down:
-	@docker-compose -f $(DEV_COMPOSE_FILE) down
+	@docker-compose -f $(DEV_COMPOSE_FILE) down -v
 	@docker-compose -f $(PROD_COMPOSE_FILE) down
 
 # Build development containers

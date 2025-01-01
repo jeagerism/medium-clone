@@ -1,7 +1,8 @@
 package services
 
 import (
-	"errors"
+	"fmt"
+	"strings" // Add strings package for splitting
 
 	"github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
 )
@@ -15,16 +16,17 @@ func NewArticleService(articleRepository repositories.ArticleRepository) Article
 }
 
 func (s *articleService) GetArticles() ([]article, error) {
-	// เรียกข้อมูลจาก repository
-	articleRepo, err := s.articleRepository.FindArticles()
+	// Call the repository to fetch articles
+	articleRepo, count, err := s.articleRepository.FindArticles("", []string{"Science", "Tech"}, 5, 0)
 	if err != nil {
-		return nil, errors.New("failed to get articles")
+		return nil, err
 	}
+	fmt.Println(count)
 
-	// สร้าง array ของ article ที่จะส่งกลับ
+	// Create an array of article that will be returned
 	var articles []article
 
-	// แปลงข้อมูลจาก repository ไปเป็น struct ที่ใช้งานใน service
+	// Process each article and convert Tags and Images fields to arrays (slices)
 	for _, v := range articleRepo {
 		articles = append(articles, article{
 			ID:        v.ID,
@@ -33,9 +35,11 @@ func (s *articleService) GetArticles() ([]article, error) {
 			UserID:    v.UserID,
 			CreatedAt: v.CreatedAt,
 			UpdatedAt: v.UpdatedAt,
-			Comment:   v.Comment, // ถ้ามีการรวม comment ไว้ใน repository
-			Images:    v.Images,  // ถ้ามีการรวม images ไว้ใน repository
-			Tags:      v.Tags,    // ถ้ามีการรวม tags ไว้ใน repository
+			Comments:  strings.Split(v.Comments, ", "), // Include the combined comments if applicable
+			// Convert Images string into a slice
+			Images: strings.Split(v.Images, ", "), // Split the Images string by comma
+			// Convert Tags string into a slice
+			Tags:      strings.Split(v.Tags, ", "), // Split the Tags string by comma
 			LikeCount: v.LikeCount,
 		})
 	}

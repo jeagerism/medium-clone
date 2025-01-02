@@ -1,10 +1,11 @@
 package services
 
 import (
-	"fmt"
-	"strings" // Add strings package for splitting
+	"strings"
 
 	"github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
+	"github.com/jeagerism/medium-clone/backend/internal/entities"
+	"github.com/jeagerism/medium-clone/backend/pkg/utils"
 )
 
 type articleService struct {
@@ -15,34 +16,45 @@ func NewArticleService(articleRepository repositories.ArticleRepository) Article
 	return &articleService{articleRepository: articleRepository}
 }
 
-func (s *articleService) GetArticles() ([]article, error) {
+func (s *articleService) GetArticles(params entities.GetArticlesParams) (getAllResponse, error) {
+	params.Offset = utils.CalculateOffset(params.Page, params.Limit)
 	// Call the repository to fetch articles
-	articleRepo, count, err := s.articleRepository.FindArticles("", []string{"Science", "Tech"}, 5, 0)
+	articleRepo, err := s.articleRepository.FindArticles(params)
 	if err != nil {
-		return nil, err
-	}
-	fmt.Println(count)
-
-	// Create an array of article that will be returned
-	var articles []article
-
-	// Process each article and convert Tags and Images fields to arrays (slices)
-	for _, v := range articleRepo {
-		articles = append(articles, article{
-			ID:        v.ID,
-			Title:     v.Title,
-			Content:   v.Content,
-			UserID:    v.UserID,
-			CreatedAt: v.CreatedAt,
-			UpdatedAt: v.UpdatedAt,
-			Comments:  strings.Split(v.Comments, ", "), // Include the combined comments if applicable
-			// Convert Images string into a slice
-			Images: strings.Split(v.Images, ", "), // Split the Images string by comma
-			// Convert Tags string into a slice
-			Tags:      strings.Split(v.Tags, ", "), // Split the Tags string by comma
-			LikeCount: v.LikeCount,
-		})
+		return getAllResponse{}, err
 	}
 
-	return articles, nil
+	var count int
+	if len(articleRepo) == 0 {
+		count = 0
+	} else {
+		count = s.articleRepository.CountRow(params)
+	}
+	// Return the response structure
+	return getAllResponse{
+		Count: count,
+		Data:  articleRepo,
+	}, nil
+}
+
+func (s *articleService) GetArticleByID(id int) (getArticleByIDResponse, error) {
+	var article getArticleByIDResponse
+	articleRepo, err := s.articleRepository.FindByID(id)
+	if err != nil {
+		return article, err
+	}
+
+	article = getArticleByIDResponse{
+		ID:           articleRepo.ID,
+		Title:        articleRepo.Title,
+		Content:      articleRepo.Content,
+		UserID:       articleRepo.UserID,
+		CreatedAt:    articleRepo.CreatedAt,
+		UpdatedAt:    articleRepo.UpdatedAt,
+		Tags:         strings.Split(articleRepo.Tags, ", "),
+		LikeCount:    articleRepo.LikeCount,
+		CommentCount: articleRepo.CommentCount,
+	}
+
+	return article, nil
 }

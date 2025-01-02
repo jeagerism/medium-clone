@@ -1,20 +1,29 @@
 package services
 
-import "time"
+import (
+	"time"
 
-type article struct {
-	ID        int       `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	UserID    int       `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Comments  []string  `json:"comments"`   // Aggregated comment content
-	Images    []string  `json:"images"`     // Aggregated image URLs
-	Tags      []string  `json:"tags"`       // Aggregated tags
-	LikeCount int       `json:"like_count"` // Total count of likes
+	"github.com/jeagerism/medium-clone/backend/internal/entities"
+)
+
+type getAllResponse struct {
+	Count int                        `json:"count"`
+	Data  []entities.ArticleResponse `json:"data"`
+}
+
+type getArticleByIDResponse struct {
+	ID           int       `json:"id"`
+	Title        string    `json:"title"`
+	Content      string    `json:"content"`
+	UserID       int       `json:"user_id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updeated_at"`
+	Tags         []string  `json:"tags"`
+	LikeCount    int       `json:"like_count"`
+	CommentCount int       `json:"comment_count"` // Add the comment count fieldF
 }
 
 type ArticleService interface {
-	GetArticles() ([]article, error)
+	GetArticles(params entities.GetArticlesParams) (getAllResponse, error)
+	GetArticleByID(id int) (getArticleByIDResponse, error)
 }

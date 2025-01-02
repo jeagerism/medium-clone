@@ -51,5 +51,6 @@ func (s *ginServer) articleRoutes() {
 	routes := s.app.Group("/articles")
 	{
 		routes.GET("", arcHand.GetArticlesHandler)
+		routes.GET("/:id", arcHand.GetArticleByIDHandler)
 	}
 }

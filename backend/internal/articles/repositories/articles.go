@@ -1,6 +1,10 @@
 package repositories
 
 import (
+	"database/sql"
+	"fmt"
+	"strings"
+
 	"github.com/jeagerism/medium-clone/backend/internal/entities"
 	"github.com/jmoiron/sqlx"
 )
@@ -25,6 +29,7 @@ func (r *articleRepository) FindArticles(params entities.GetArticlesParams) ([]e
 			a.user_id, 
 			a.created_at, 
 			a.updated_at,
+			a.cover_image,
 			STRING_AGG(DISTINCT t.name , ', ') AS tags, 
 			COUNT(DISTINCT l.id) AS like_count,
 			COUNT(DISTINCT c.id) AS comment_count
@@ -84,6 +89,7 @@ func (r *articleRepository) FindByID(id int) (entities.ArticleResponse, error) {
 		a.user_id, 
 		a.created_at, 
 		a.updated_at,
+		a.cover_image,
 		STRING_AGG(DISTINCT t.name , ', ') AS tags, 
 		COUNT(DISTINCT l.id) AS like_count,
 		COUNT(DISTINCT c.id) AS comment_count
@@ -107,4 +113,104 @@ func (r *articleRepository) FindByID(id int) (entities.ArticleResponse, error) {
 	return article, nil
 }
 
-// ถ้า content ข้อมูลเยอะมาก ต้องการจำกัดข้อมูลในการ FindArticles แต่ใน FindById เอาเต็มที่มี
+func (r *articleRepository) SaveArticle(req entities.AddArticleRequest) (int, error) {
+	var id int
+	query := `
+	INSERT INTO articles (title, content, cover_image, user_id)
+	VALUES ($1, $2, $3, $4)
+	RETURNING id;
+	`
+	err := r.db.QueryRow(query, req.Title, req.Content, req.Cover, req.UserID).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (r *articleRepository) CheckTag(tag string) (int, error) {
+	var id int
+	query := `
+	SELECT id
+	FROM tags
+	WHERE name = $1
+	`
+	err := r.db.QueryRow(query, tag).Scan(&id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil // Tag not found
+		}
+		return 0, err // Other errors
+	}
+	return id, nil
+}
+
+func (r *articleRepository) SaveTag(tag string) (int, error) {
+	var tagID int
+	query := `INSERT INTO tags (name) VALUES ($1) RETURNING id`
+	err := r.db.QueryRow(query, tag).Scan(&tagID)
+	if err != nil {
+		return 0, err
+	}
+	return tagID, nil
+}
+
+func (r *articleRepository) SaveArticleTag(articleID, tagID int) error {
+	query := `INSERT INTO article_tags (article_id, tag_id) VALUES ($1, $2)`
+	_, err := r.db.Exec(query, articleID, tagID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// func (r *articleRepository) UpdateArticle(req entities.UpdateArticleRequest) error {
+// 	query := `
+// 	UPDATE articles
+// 	SET title = $1, content = $2, cover_image = $3
+// 	WHERE id = $4;`
+// 	result, err := r.db.Exec(query, req.Title, req.Content, req.Cover, req.Id)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// ตรวจสอบจำนวนแถวที่ได้รับผลกระทบ
+// 	rowsAffected, err := result.RowsAffected()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if rowsAffected == 0 {
+// 		return fmt.Errorf("no article found with id %d", req.Id)
+// 	}
+
+// 	return nil
+// }
+
+func (r *articleRepository) UpdateArticle(fields []string, args []interface{}, articleID int) error {
+	// สร้าง query สำหรับอัปเดต
+	query := fmt.Sprintf(`
+		UPDATE articles
+		SET %s
+		WHERE id = $%d
+	`, strings.Join(fields, ", "), len(fields)+1)
+	args = append(args, articleID)
+
+	// รัน query
+	result, err := r.db.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	// ตรวจสอบจำนวนแถวที่ได้รับผลกระทบ
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	// หากไม่พบข้อมูลที่จะอัปเดต
+	if rowsAffected == 0 {
+		return fmt.Errorf("no article found with id %d", articleID)
+	}
+
+	return nil
+}

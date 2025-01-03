@@ -16,6 +16,7 @@ type getArticleByIDResponse struct {
 	Title        string    `json:"title"`
 	Content      string    `json:"content"`
 	UserID       int       `json:"user_id"`
+	Cover        string    `json:"cover_image"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updeated_at"`
 	Tags         []string  `json:"tags"`
@@ -26,4 +27,6 @@ type getArticleByIDResponse struct {
 type ArticleService interface {
 	GetArticles(params entities.GetArticlesParams) (getAllResponse, error)
 	GetArticleByID(id int) (getArticleByIDResponse, error)
+	AddArticle(req entities.AddArticleRequest) error
+	UpdateArticle(req entities.UpdateArticleRequest) error
 }

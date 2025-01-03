@@ -52,5 +52,7 @@ func (s *ginServer) articleRoutes() {
 	{
 		routes.GET("", arcHand.GetArticlesHandler)
 		routes.GET("/:id", arcHand.GetArticleByIDHandler)
+		routes.POST("", arcHand.AddArticleHandler)
+		routes.PUT("", arcHand.UpdateArticleHandler)
 	}
 }

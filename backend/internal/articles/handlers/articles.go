@@ -57,3 +57,38 @@ func (h *articleHandler) GetArticleByIDHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, article)
 }
+
+func (h *articleHandler) AddArticleHandler(c *gin.Context) {
+	var req entities.AddArticleRequest
+	// Bind and validate the JSON payload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Proceed with business logic if validation passes
+	err := h.articleService.AddArticle(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add article"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Article created successfully"})
+}
+
+func (h *articleHandler) UpdateArticleHandler(c *gin.Context) {
+	var req entities.UpdateArticleRequest
+	// Bind and validate the JSON payload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.articleService.UpdateArticle(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update article"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Article updated successfully"})
+}

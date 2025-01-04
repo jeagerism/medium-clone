@@ -223,3 +223,48 @@ func (r *articleRepository) RemoveArticle(id int) error {
 
 	return nil
 }
+
+func (r *articleRepository) SaveComment(req entities.AddCommentRequest) error {
+	query := `INSERT INTO comments (article_id,user_id,content) VALUES ($1,$2,$3)`
+	_, err := r.db.Exec(query, req.ID, req.UserID, req.Content)
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to save comment %d , %d:%w", req.ID, req.UserID, err))
+		return fmt.Errorf("failed to save comment %d , %d:%w", req.ID, req.UserID, err)
+	}
+	return nil
+}
+
+func (r *articleRepository) RemoveComment(id int) error {
+	query := `DELETE FROM comments WHERE id = $1`
+	result, err := r.db.Exec(query, id)
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to delete comment with ID %d: %w", id, err))
+		return fmt.Errorf("failed to delete comment with ID %d: %w", id, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to check rows affected for comment ID %d: %w", id, err))
+		return fmt.Errorf("failed to check rows affected for comment ID %d: %w", id, err)
+	}
+
+	if rowsAffected == 0 {
+		err := fmt.Errorf("no comment found with ID %d", id)
+		logger.LogError(err)
+		return err
+	}
+
+	return nil
+}
+
+func (r *articleRepository) FindArticleComments(id int) ([]entities.GetArticleCommentsResponse, error) {
+	var comments []entities.GetArticleCommentsResponse
+	query := `SELECT * FROM comments WHERE article_id = $1`
+	err := r.db.Select(&comments, query, id)
+	if err != nil {
+		logger.LogError(fmt.Errorf("database error in Find Article Comments: %w", err))
+		return nil, fmt.Errorf("failed to find comment: %w", err)
+	}
+
+	return comments, nil
+}

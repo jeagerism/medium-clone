@@ -25,8 +25,15 @@ type getArticleByIDResponse struct {
 }
 
 type ArticleService interface {
+	// Articles Services
 	GetArticles(params entities.GetArticlesParams) (getAllResponse, error)
 	GetArticleByID(id int) (getArticleByIDResponse, error)
 	AddArticle(req entities.AddArticleRequest) error
 	UpdateArticle(req entities.UpdateArticleRequest) error
+	DeleteArticle(id int) error
+
+	// Comment Services
+	AddComment(req entities.AddCommentRequest) error
+	DeleteComment(id int) error
+	GetArticleComments(id int) ([]entities.GetArticleCommentsResponse, error)
 }

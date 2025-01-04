@@ -19,3 +19,10 @@ var (
 	ErrFailedToAddTag       = errors.New("failed to add new tag")
 	ErrFailedToAssociateTag = errors.New("failed to associate tag with article")
 )
+
+// Comment-related errors
+var (
+	ErrFailedToAddComment    = errors.New("failed to add new comment")
+	ErrFailedToDeleteComment = errors.New("failed to delete comment")
+	ErrCommentNotFound       = errors.New("comment not found")
+)

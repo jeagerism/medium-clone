@@ -51,9 +51,16 @@ func (s *ginServer) articleRoutes() {
 
 	routes := s.app.Group("/articles")
 	{
+		// Articles API
 		routes.GET("", arcHand.GetArticlesHandler)
 		routes.GET("/:id", arcHand.GetArticleByIDHandler)
 		routes.POST("", arcHand.AddArticleHandler)
 		routes.PUT("", arcHand.UpdateArticleHandler)
+		routes.DELETE("", arcHand.DeleteArticleHandler)
+
+		// Comment API
+		routes.POST("/comment", arcHand.AddCommentHandler)
+		routes.DELETE("/comment", arcHand.DeleteCommentHandler)
+		routes.GET("/:id/comments", arcHand.GetArticleCommentsHandler)
 	}
 }

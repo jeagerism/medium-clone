@@ -162,3 +162,35 @@ func (s *articleService) DeleteArticle(id int) error {
 
 	return nil
 }
+
+// comments Services
+func (s *articleService) AddComment(req entities.AddCommentRequest) error {
+	err := s.articleRepository.SaveComment(req)
+	if err != nil {
+		return ErrFailedToAddComment
+	}
+	return nil
+}
+
+func (s *articleService) DeleteComment(id int) error {
+	err := s.articleRepository.RemoveComment(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "no comment found") {
+			// แปลงเป็น error ที่เหมาะสมกับ business logic
+			return ErrCommentNotFound
+		}
+
+		// error อื่นๆ ส่งไปที่ Handler/Controller
+		return ErrFailedToDeleteComment
+	}
+
+	return nil
+}
+
+func (s *articleService) GetArticleComments(id int) ([]entities.GetArticleCommentsResponse, error) {
+	comments, err := s.articleRepository.FindArticleComments(id)
+	if err != nil {
+		return comments, ErrCommentNotFound
+	}
+	return comments, nil
+}

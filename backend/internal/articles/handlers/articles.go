@@ -92,3 +92,69 @@ func (h *articleHandler) UpdateArticleHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Article updated successfully"})
 }
+
+func (h *articleHandler) DeleteArticleHandler(c *gin.Context) {
+	var req entities.DeleteArticleRequest
+	// Bind and validate the JSON payload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.articleService.DeleteArticle(req.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Article deleted successfully"})
+}
+
+func (h *articleHandler) AddCommentHandler(c *gin.Context) {
+	var req entities.AddCommentRequest
+	// Bind and validate the JSON payload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// Proceed with business logic if validation passes
+	err := h.articleService.AddComment(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Comment posted"})
+}
+
+func (h *articleHandler) DeleteCommentHandler(c *gin.Context) {
+	var req entities.DeleteCommentRequest
+	// Bind and validate the JSON payload
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.articleService.DeleteComment(req.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Comment deleted successfully"})
+}
+
+func (h *articleHandler) GetArticleCommentsHandler(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid query parameters"})
+		return
+	}
+
+	comments, err := h.articleService.GetArticleComments(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, comments)
+}

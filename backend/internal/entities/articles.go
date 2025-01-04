@@ -32,17 +32,32 @@ type AddArticleRequest struct {
 	Cover   string `json:"cover_image" binding:"required,url"`     // Cover image URL is required and must be a valid URL
 }
 
-// type UpdateArticleRequest struct {
-// 	Id      int    `json:"id"`
-// 	Title   string `json:"title" binding:"required,min=3,max=100"` // Title is required, with a length between 3 and 100
-// 	Content string `json:"content" binding:"required,min=10"`      // Content is required, minimum 10 characters
-// 	Tags    string `json:"tags" binding:"required"`                // Tags are required (can also use custom validation for format)
-// 	Cover   string `json:"cover_image" binding:"required,url"`     // Cover image URL is required and must be a valid URL
-// }
-
 type UpdateArticleRequest struct {
 	Id      int     `json:"id" binding:"required"`
 	Title   *string `json:"title"`
 	Content *string `json:"content"`
 	Cover   *string `json:"cover_image"`
+}
+
+type DeleteArticleRequest struct {
+	ID     int `json:"id" binding:"required"`
+	UserID int `json:"user_id" binding:"required"`
+}
+
+type AddCommentRequest struct {
+	ID      int    `json:"article_id" binding:"required"`
+	UserID  int    `json:"user_id" binding:"required"`
+	Content string `json:"content" binding:"required"`
+}
+
+type DeleteCommentRequest struct {
+	ID     int `json:"article_id" binding:"required"`
+	UserID int `json:"user_id" binding:"required"`
+}
+
+type GetArticleCommentsResponse struct {
+	ID        int       `db:"comment_id" json:"comment_id"`
+	Content   string    `db:"content" json:"content"`
+	UserID    int       `db:"user_id" json:"user_id"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
 }

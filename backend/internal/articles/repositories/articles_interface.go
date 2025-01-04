@@ -14,4 +14,7 @@ type ArticleRepository interface {
 	SaveArticleTag(articleID, tagID int) error
 	UpdateArticle(fields []string, args []interface{}, articleID int) error
 	RemoveArticle(id int) error
+	SaveComment(req entities.AddCommentRequest) error
+	RemoveComment(id int) error
+	FindArticleComments(id int) ([]entities.GetArticleCommentsResponse, error)
 }

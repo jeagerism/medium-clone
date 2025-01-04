@@ -69,7 +69,7 @@ func (h *articleHandler) AddArticleHandler(c *gin.Context) {
 	// Proceed with business logic if validation passes
 	err := h.articleService.AddArticle(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add article"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *articleHandler) UpdateArticleHandler(c *gin.Context) {
 
 	err := h.articleService.UpdateArticle(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update article"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

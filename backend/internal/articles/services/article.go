@@ -22,7 +22,7 @@ func (s *articleService) GetArticles(params entities.GetArticlesParams) (getAllR
 	// Call the repository to fetch articles
 	articleRepo, err := s.articleRepository.FindArticles(params)
 	if err != nil {
-		return getAllResponse{}, err
+		return getAllResponse{}, ErrArticlesNotFound
 	}
 
 	var count int
@@ -42,7 +42,10 @@ func (s *articleService) GetArticleByID(id int) (getArticleByIDResponse, error) 
 	var article getArticleByIDResponse
 	articleRepo, err := s.articleRepository.FindByID(id)
 	if err != nil {
-		return article, err
+		if strings.Contains(err.Error(), "not found") {
+			return getArticleByIDResponse{}, ErrArticleNotFound
+		}
+		return getArticleByIDResponse{}, ErrFailedToFind
 	}
 
 	article = getArticleByIDResponse{
@@ -65,7 +68,7 @@ func (s *articleService) AddArticle(req entities.AddArticleRequest) error {
 	// Save the article and get its ID
 	arId, err := s.articleRepository.SaveArticle(req)
 	if err != nil {
-		return err
+		return ErrFailedToAddArticle
 	}
 
 	// Split the tags from the request
@@ -82,21 +85,21 @@ func (s *articleService) AddArticle(req entities.AddArticleRequest) error {
 		// Check if the tag exists
 		tagId, err = s.articleRepository.CheckTag(tag)
 		if err != nil {
-			return err
+			return ErrFailedToAddArticle
 		}
 
 		// If the tag doesn't exist, save the tag and get its ID
 		if tagId == 0 {
 			tagId, err = s.articleRepository.SaveTag(tag)
 			if err != nil {
-				return err
+				return ErrFailedToAddTag
 			}
 		}
 
 		// Save the article-tag association
 		err = s.articleRepository.SaveArticleTag(arId, tagId)
 		if err != nil {
-			return err
+			return ErrFailedToAssociateTag
 		}
 	}
 
@@ -130,9 +133,32 @@ func (s *articleService) UpdateArticle(req entities.UpdateArticleRequest) error 
 
 	// ถ้าไม่มีฟิลด์ใดถูกอัปเดต
 	if len(fields) == 0 {
-		return fmt.Errorf("no fields to update")
+		return ErrNoFieldsUpdate
 	}
 
 	// ส่งข้อมูลไปยัง repository
-	return s.articleRepository.UpdateArticle(fields, args, req.Id)
+	err := s.articleRepository.UpdateArticle(fields, args, req.Id)
+	if err != nil {
+		if strings.Contains(err.Error(), "no article found") {
+			return ErrArticleNotFound
+		}
+		return ErrFailedToUpdate
+	}
+
+	return nil
+}
+
+func (s *articleService) DeleteArticle(id int) error {
+	err := s.articleRepository.RemoveArticle(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "no article found") {
+			// แปลงเป็น error ที่เหมาะสมกับ business logic
+			return ErrArticleNotFound
+		}
+
+		// error อื่นๆ ส่งไปที่ Handler/Controller
+		return ErrFailedToDelete
+	}
+
+	return nil
 }

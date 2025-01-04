@@ -13,4 +13,5 @@ type ArticleRepository interface {
 	SaveTag(tag string) (int, error)
 	SaveArticleTag(articleID, tagID int) error
 	UpdateArticle(fields []string, args []interface{}, articleID int) error
+	RemoveArticle(id int) error
 }

@@ -6,9 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jeagerism/medium-clone/backend/config"
-	"github.com/jeagerism/medium-clone/backend/internal/articles/handlers"
-	"github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
-	"github.com/jeagerism/medium-clone/backend/internal/articles/services"
+	article_han "github.com/jeagerism/medium-clone/backend/internal/articles/handlers"
+	article_repo "github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
+	article_svc "github.com/jeagerism/medium-clone/backend/internal/articles/services"
+
 	"github.com/jeagerism/medium-clone/backend/pkg/database"
 )
 
@@ -44,9 +45,9 @@ func (s *ginServer) Start() {
 }
 
 func (s *ginServer) articleRoutes() {
-	arcRepo := repositories.NewArticleRepository(s.db.GetDb())
-	arcServ := services.NewArticleService(arcRepo)
-	arcHand := handlers.NewArticleHandler(arcServ)
+	arcRepo := article_repo.NewArticleRepository(s.db.GetDb())
+	arcServ := article_svc.NewArticleService(arcRepo)
+	arcHand := article_han.NewArticleHandler(arcServ)
 
 	routes := s.app.Group("/articles")
 	{

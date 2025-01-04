@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jeagerism/medium-clone/backend/internal/entities"
+	"github.com/jeagerism/medium-clone/backend/pkg/logger"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -19,13 +20,11 @@ func NewArticleRepository(db *sqlx.DB) ArticleRepository {
 
 func (r *articleRepository) FindArticles(params entities.GetArticlesParams) ([]entities.ArticleResponse, error) {
 	var articles []entities.ArticleResponse
-
-	// ปรับ query ให้รองรับกรณี tags ว่างหรือไม่
 	query := `
 		SELECT 
 			a.id, 
 			a.title, 
-			LEFT(a.content, 100) AS content, -- จำกัดเนื้อหา content ไว้ 100 ตัวอักษร
+			LEFT(a.content, 100) AS content, 
 			a.user_id, 
 			a.created_at, 
 			a.updated_at,
@@ -48,10 +47,10 @@ func (r *articleRepository) FindArticles(params entities.GetArticlesParams) ([]e
 			a.id
 		LIMIT $3 OFFSET $4;
 	`
-
 	err := r.db.Select(&articles, query, params.Search, params.Tags, params.Limit, params.Offset)
 	if err != nil {
-		return nil, err
+		logger.LogError(fmt.Errorf("database error in FindArticles: %w", err))
+		return nil, fmt.Errorf("failed to find articles: %w", err)
 	}
 
 	return articles, nil
@@ -59,7 +58,6 @@ func (r *articleRepository) FindArticles(params entities.GetArticlesParams) ([]e
 
 func (r *articleRepository) CountRow(params entities.GetArticlesParams) int {
 	var total int
-	// Query for total count
 	countQuery := `
 		SELECT COUNT(DISTINCT a.id)
 		FROM 
@@ -68,11 +66,11 @@ func (r *articleRepository) CountRow(params entities.GetArticlesParams) int {
 		LEFT JOIN tags t ON at2.tag_id = t.id
 		WHERE 
 			($1 = '' OR a.title ILIKE '%' || $1 || '%')
-			-- ตรวจสอบเงื่อนไขสำหรับ tags
-			 AND ($2 = '' OR t.name ILIKE '%' || $2 || '%') -- การใช้ ILIKE สำหรับการค้นหาด้วย pattern
+			AND ($2 = '' OR t.name ILIKE '%' || $2 || '%')
 	`
 	err := r.db.Get(&total, countQuery, params.Search, params.Tags)
 	if err != nil {
+		logger.LogError(fmt.Errorf("database error in CountRow: %w", err))
 		return 0
 	}
 	return total
@@ -80,34 +78,37 @@ func (r *articleRepository) CountRow(params entities.GetArticlesParams) int {
 
 func (r *articleRepository) FindByID(id int) (entities.ArticleResponse, error) {
 	var article entities.ArticleResponse
-
 	query := `
-	SELECT 
-		a.id, 
-		a.title, 
-		a.content, -- ดึง content ทั้งหมด
-		a.user_id, 
-		a.created_at, 
-		a.updated_at,
-		a.cover_image,
-		STRING_AGG(DISTINCT t.name , ', ') AS tags, 
-		COUNT(DISTINCT l.id) AS like_count,
-		COUNT(DISTINCT c.id) AS comment_count
-	FROM 
-		articles a
-	LEFT JOIN article_tags at2 ON a.id = at2.article_id
-	LEFT JOIN tags t ON at2.tag_id = t.id
-	LEFT JOIN likes l ON a.id = l.article_id
-	LEFT JOIN comments c ON a.id = c.article_id
-	WHERE 
-		a.id = $1
-	GROUP BY 
-		a.id;
+		SELECT 
+			a.id, 
+			a.title, 
+			a.content, 
+			a.user_id, 
+			a.created_at, 
+			a.updated_at,
+			a.cover_image,
+			STRING_AGG(DISTINCT t.name , ', ') AS tags, 
+			COUNT(DISTINCT l.id) AS like_count,
+			COUNT(DISTINCT c.id) AS comment_count
+		FROM 
+			articles a
+		LEFT JOIN article_tags at2 ON a.id = at2.article_id
+		LEFT JOIN tags t ON at2.tag_id = t.id
+		LEFT JOIN likes l ON a.id = l.article_id
+		LEFT JOIN comments c ON a.id = c.article_id
+		WHERE 
+			a.id = $1
+		GROUP BY 
+			a.id;
 	`
-
 	err := r.db.Get(&article, query, id)
 	if err != nil {
-		return entities.ArticleResponse{}, err
+		if err == sql.ErrNoRows {
+			logger.LogError(fmt.Errorf("article with ID %d not found: %w", id, err))
+			return entities.ArticleResponse{}, fmt.Errorf("article with ID %d not found: %w", id, err)
+		}
+		logger.LogError(fmt.Errorf("failed to find article by ID %d: %w", id, err))
+		return entities.ArticleResponse{}, fmt.Errorf("failed to find article by ID %d: %w", id, err)
 	}
 
 	return article, nil
@@ -116,13 +117,14 @@ func (r *articleRepository) FindByID(id int) (entities.ArticleResponse, error) {
 func (r *articleRepository) SaveArticle(req entities.AddArticleRequest) (int, error) {
 	var id int
 	query := `
-	INSERT INTO articles (title, content, cover_image, user_id)
-	VALUES ($1, $2, $3, $4)
-	RETURNING id;
+		INSERT INTO articles (title, content, cover_image, user_id)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id;
 	`
 	err := r.db.QueryRow(query, req.Title, req.Content, req.Cover, req.UserID).Scan(&id)
 	if err != nil {
-		return 0, err
+		logger.LogError(fmt.Errorf("failed to save article: %w", err))
+		return 0, fmt.Errorf("failed to save article: %w", err)
 	}
 	return id, nil
 }
@@ -130,86 +132,93 @@ func (r *articleRepository) SaveArticle(req entities.AddArticleRequest) (int, er
 func (r *articleRepository) CheckTag(tag string) (int, error) {
 	var id int
 	query := `
-	SELECT id
-	FROM tags
-	WHERE name = $1
+		SELECT id
+		FROM tags
+		WHERE name = $1;
 	`
 	err := r.db.QueryRow(query, tag).Scan(&id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, nil // Tag not found
 		}
-		return 0, err // Other errors
+		logger.LogError(fmt.Errorf("failed to check tag '%s': %w", tag, err))
+		return 0, fmt.Errorf("failed to check tag '%s': %w", tag, err)
 	}
 	return id, nil
 }
 
 func (r *articleRepository) SaveTag(tag string) (int, error) {
 	var tagID int
-	query := `INSERT INTO tags (name) VALUES ($1) RETURNING id`
+	query := `INSERT INTO tags (name) VALUES ($1) RETURNING id;`
 	err := r.db.QueryRow(query, tag).Scan(&tagID)
 	if err != nil {
-		return 0, err
+		logger.LogError(fmt.Errorf("failed to save tag '%s': %w", tag, err))
+		return 0, fmt.Errorf("failed to save tag '%s': %w", tag, err)
 	}
 	return tagID, nil
 }
 
 func (r *articleRepository) SaveArticleTag(articleID, tagID int) error {
-	query := `INSERT INTO article_tags (article_id, tag_id) VALUES ($1, $2)`
+	query := `INSERT INTO article_tags (article_id, tag_id) VALUES ($1, $2);`
 	_, err := r.db.Exec(query, articleID, tagID)
 	if err != nil {
-		return err
+		logger.LogError(fmt.Errorf("failed to save article-tag association '%d' & '%d': %w", articleID, tagID, err))
+		return fmt.Errorf("failed to associate tag %d with article %d: %w", tagID, articleID, err)
 	}
 	return nil
 }
 
-// func (r *articleRepository) UpdateArticle(req entities.UpdateArticleRequest) error {
-// 	query := `
-// 	UPDATE articles
-// 	SET title = $1, content = $2, cover_image = $3
-// 	WHERE id = $4;`
-// 	result, err := r.db.Exec(query, req.Title, req.Content, req.Cover, req.Id)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// ตรวจสอบจำนวนแถวที่ได้รับผลกระทบ
-// 	rowsAffected, err := result.RowsAffected()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if rowsAffected == 0 {
-// 		return fmt.Errorf("no article found with id %d", req.Id)
-// 	}
-
-// 	return nil
-// }
-
 func (r *articleRepository) UpdateArticle(fields []string, args []interface{}, articleID int) error {
-	// สร้าง query สำหรับอัปเดต
+	setClauses := make([]string, len(fields))
+	for i, field := range fields {
+		setClauses[i] = fmt.Sprintf("%s = $%d", field, i+1)
+	}
+
 	query := fmt.Sprintf(`
 		UPDATE articles
 		SET %s
 		WHERE id = $%d
-	`, strings.Join(fields, ", "), len(fields)+1)
+	`, strings.Join(setClauses, ", "), len(fields)+1)
+
 	args = append(args, articleID)
 
-	// รัน query
 	result, err := r.db.Exec(query, args...)
 	if err != nil {
-		return err
+		logger.LogError(fmt.Errorf("failed to update article with ID %d: %w", articleID, err))
+		return fmt.Errorf("failed to update article with ID %d: %w", articleID, err)
 	}
 
-	// ตรวจสอบจำนวนแถวที่ได้รับผลกระทบ
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		logger.LogError(fmt.Errorf("failed to check rows affected for article ID %d: %w", articleID, err))
+		return fmt.Errorf("failed to check rows affected for article ID %d: %w", articleID, err)
 	}
 
-	// หากไม่พบข้อมูลที่จะอัปเดต
 	if rowsAffected == 0 {
-		return fmt.Errorf("no article found with id %d", articleID)
+		return fmt.Errorf("no article found with ID %d", articleID)
+	}
+
+	return nil
+}
+
+func (r *articleRepository) RemoveArticle(id int) error {
+	query := `DELETE FROM articles WHERE id = $1;`
+	result, err := r.db.Exec(query, id)
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to delete article with ID %d: %w", id, err))
+		return fmt.Errorf("failed to delete article with ID %d: %w", id, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to check rows affected for article ID %d: %w", id, err))
+		return fmt.Errorf("failed to check rows affected for article ID %d: %w", id, err)
+	}
+
+	if rowsAffected == 0 {
+		err := fmt.Errorf("no article found with ID %d", id)
+		logger.LogError(err)
+		return err
 	}
 
 	return nil

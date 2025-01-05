@@ -3,7 +3,7 @@ package services
 import (
 	"time"
 
-	"github.com/jeagerism/medium-clone/backend/internal/entities"
+	"github.com/jeagerism/medium-clone/backend/internal/articles/entities"
 )
 
 type getAllResponse struct {
@@ -31,6 +31,7 @@ type ArticleService interface {
 	AddArticle(req entities.AddArticleRequest) error
 	UpdateArticle(req entities.UpdateArticleRequest) error
 	DeleteArticle(id int) error
+	GetArticleByUserID(req entities.GetArticlesByUserIDParams) ([]entities.ArticleResponse, error)
 
 	// Comment Services
 	AddComment(req entities.AddCommentRequest) error

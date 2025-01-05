@@ -10,6 +10,10 @@ import (
 	article_repo "github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
 	article_svc "github.com/jeagerism/medium-clone/backend/internal/articles/services"
 
+	user_han "github.com/jeagerism/medium-clone/backend/internal/users/handlers"
+	user_repo "github.com/jeagerism/medium-clone/backend/internal/users/repositories"
+	user_svc "github.com/jeagerism/medium-clone/backend/internal/users/services"
+
 	"github.com/jeagerism/medium-clone/backend/pkg/database"
 )
 
@@ -37,6 +41,7 @@ func (s *ginServer) Start() {
 	})
 
 	s.articleRoutes()
+	s.userRoutes()
 
 	serverURL := fmt.Sprintf(":%d", s.cfg.Server.Port)
 	if err := s.app.Run(serverURL); err != nil {
@@ -57,10 +62,22 @@ func (s *ginServer) articleRoutes() {
 		routes.POST("", arcHand.AddArticleHandler)
 		routes.PUT("", arcHand.UpdateArticleHandler)
 		routes.DELETE("", arcHand.DeleteArticleHandler)
+		routes.GET("list", arcHand.GetArticleByUserIDHandler)
 
 		// Comment API
 		routes.POST("/comment", arcHand.AddCommentHandler)
 		routes.DELETE("/comment", arcHand.DeleteCommentHandler)
 		routes.GET("/:id/comments", arcHand.GetArticleCommentsHandler)
+	}
+}
+
+func (s *ginServer) userRoutes() {
+	userRepo := user_repo.NewUserRepository(s.db.GetDb())
+	userServ := user_svc.NewUserService(userRepo)
+	userHand := user_han.NewUserHandler(userServ)
+
+	routes := s.app.Group("/user")
+	{
+		routes.GET("/@:id", userHand.GetUserProfileHandler)
 	}
 }

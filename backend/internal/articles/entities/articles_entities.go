@@ -24,6 +24,14 @@ type GetArticlesParams struct {
 	Offset int
 }
 
+type GetArticlesByUserIDParams struct {
+	ID     int    `form:"id"`
+	Limit  int    `form:"limit"`
+	Page   int    `form:"page"`
+	Sort   string `form:"sort"`
+	Offset int
+}
+
 type AddArticleRequest struct {
 	Title   string `json:"title" binding:"required,min=3,max=100"` // Title is required, with a length between 3 and 100
 	Content string `json:"content" binding:"required,min=10"`      // Content is required, minimum 10 characters
@@ -56,8 +64,11 @@ type DeleteCommentRequest struct {
 }
 
 type GetArticleCommentsResponse struct {
-	ID        int       `db:"comment_id" json:"comment_id"`
-	Content   string    `db:"content" json:"content"`
-	UserID    int       `db:"user_id" json:"user_id"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID         int       `db:"id" json:"comment_id"`
+	AID        int       `db:"article_id" json:"article_id"`
+	CreatedAt  time.Time `db:"created_at" json:"created_at"`
+	Content    string    `db:"content" json:"content"`
+	UserID     int       `db:"user_id" json:"user_id"`
+	UserName   string    `db:"name" json:"name"`
+	ProfileImg string    `db:"profile_image" json:"profile_image"`
 }

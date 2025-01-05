@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jeagerism/medium-clone/backend/internal/entities"
+	"github.com/jeagerism/medium-clone/backend/internal/articles/entities"
 	"github.com/jeagerism/medium-clone/backend/pkg/logger"
 	"github.com/jmoiron/sqlx"
 )
@@ -21,32 +21,36 @@ func NewArticleRepository(db *sqlx.DB) ArticleRepository {
 func (r *articleRepository) FindArticles(params entities.GetArticlesParams) ([]entities.ArticleResponse, error) {
 	var articles []entities.ArticleResponse
 	query := `
-		SELECT 
-			a.id, 
-			a.title, 
-			LEFT(a.content, 100) AS content, 
-			a.user_id, 
-			a.created_at, 
-			a.updated_at,
-			a.cover_image,
-			STRING_AGG(DISTINCT t.name , ', ') AS tags, 
-			COUNT(DISTINCT l.id) AS like_count,
-			COUNT(DISTINCT c.id) AS comment_count
-		FROM 
-			articles a
-		LEFT JOIN article_tags at2 ON a.id = at2.article_id
-		LEFT JOIN tags t ON at2.tag_id = t.id
-		LEFT JOIN likes l ON a.id = l.article_id
-		LEFT JOIN comments c ON a.id = c.article_id
-		WHERE 
-			($1 = '' OR a.title ILIKE '%' || $1 || '%')
-			AND ($2 = '' OR t.name ILIKE '%' || $2 || '%')
-		GROUP BY 
-			a.id
-		ORDER BY 
-			a.id
-		LIMIT $3 OFFSET $4;
+	SELECT 
+		a.id, 
+		a.title, 
+		LEFT(a.content, 100) AS content, 
+		a.user_id, 
+		a.created_at, 
+		a.updated_at,
+		a.cover_image,
+		COALESCE(STRING_AGG(DISTINCT t.name , ', '), '') AS tags, 
+		COUNT(DISTINCT l.id) AS like_count,
+		COUNT(DISTINCT c.id) AS comment_count
+	FROM 
+		articles a
+	LEFT JOIN article_tags at2 ON a.id = at2.article_id
+	LEFT JOIN tags t ON at2.tag_id = t.id
+	LEFT JOIN likes l ON a.id = l.article_id
+	LEFT JOIN comments c ON a.id = c.article_id
+	WHERE 
+		(COALESCE($1, '') = '' OR a.title ILIKE '%' || COALESCE($1, '') || '%')
+		AND (COALESCE($2, '') = '' OR t.name ILIKE '%' || COALESCE($2, '') || '%')
+	GROUP BY 
+		a.id
+	ORDER BY 
+		a.id
+	LIMIT $3 OFFSET $4;
+
 	`
+	fmt.Println("search", params.Search)
+	fmt.Println("tags", params.Tags)
+
 	err := r.db.Select(&articles, query, params.Search, params.Tags, params.Limit, params.Offset)
 	if err != nil {
 		logger.LogError(fmt.Errorf("database error in FindArticles: %w", err))
@@ -112,6 +116,41 @@ func (r *articleRepository) FindByID(id int) (entities.ArticleResponse, error) {
 	}
 
 	return article, nil
+}
+
+func (r *articleRepository) FindArticlesByUserID(req entities.GetArticlesByUserIDParams) ([]entities.ArticleResponse, error) {
+	query := `
+		SELECT 
+			a.id, 
+			a.title, 
+			LEFT(a.content, 100) AS content, 
+			a.user_id, 
+			a.created_at, 
+			a.updated_at,
+			a.cover_image,
+			COUNT(DISTINCT l.id) AS like_count,
+			COUNT(DISTINCT c.id) AS comment_count
+		FROM 
+			articles a
+		LEFT JOIN likes l ON a.id = l.article_id
+		LEFT JOIN comments c ON a.id = c.article_id
+		WHERE 
+			a.user_id = $1
+		GROUP BY 
+			a.id
+		ORDER BY 
+			a.id
+		LIMIT $2 OFFSET $3;
+	`
+
+	var articles []entities.ArticleResponse
+	err := r.db.Select(&articles, query, req.ID, req.Limit, req.Offset)
+	if err != nil {
+		logger.LogError(fmt.Errorf("database error in FindArticlesByUserID: %w", err))
+		return nil, fmt.Errorf("failed to find articles by user ID: %w", err)
+	}
+
+	return articles, nil
 }
 
 func (r *articleRepository) SaveArticle(req entities.AddArticleRequest) (int, error) {
@@ -259,7 +298,18 @@ func (r *articleRepository) RemoveComment(id int) error {
 
 func (r *articleRepository) FindArticleComments(id int) ([]entities.GetArticleCommentsResponse, error) {
 	var comments []entities.GetArticleCommentsResponse
-	query := `SELECT * FROM comments WHERE article_id = $1`
+	query := `
+	SELECT  
+		c.id,
+		c.content,
+		c.created_at,
+		u.id AS user_id ,
+		u.name,
+		u.profile_image
+	FROM 
+		comments c
+	LEFT JOIN users u ON c.user_id = u.id 
+	WHERE article_id = $1`
 	err := r.db.Select(&comments, query, id)
 	if err != nil {
 		logger.LogError(fmt.Errorf("database error in Find Article Comments: %w", err))

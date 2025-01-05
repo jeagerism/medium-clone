@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jeagerism/medium-clone/backend/internal/articles/entities"
 	"github.com/jeagerism/medium-clone/backend/internal/articles/services"
-	"github.com/jeagerism/medium-clone/backend/internal/entities"
 )
 
 type articleHandler struct {
@@ -31,6 +31,12 @@ func (h *articleHandler) GetArticlesHandler(c *gin.Context) {
 	if req.Limit <= 0 {
 		req.Limit = 10
 	}
+	// if len(req.Search) == 0 {
+	// 	req.Search = "all"
+	// }
+	// if len(req.Tags) == 0 {
+	// 	req.Tags = "all"
+	// }
 
 	// Call the service to fetch articles
 	articlesResponse, err := h.articleService.GetArticles(req) // Adjust service method to accept search and tags
@@ -44,6 +50,21 @@ func (h *articleHandler) GetArticlesHandler(c *gin.Context) {
 }
 
 func (h *articleHandler) GetArticleByIDHandler(c *gin.Context) {
+	var req entities.GetArticlesByUserIDParams
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid query parameters"})
+		return
+	}
+
+	articles, err := h.articleService.GetArticleByUserID(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, articles)
+}
+
+func (h *articleHandler) GetArticleByUserIDHandler(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid query parameters"})

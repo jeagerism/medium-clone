@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jeagerism/medium-clone/backend/internal/articles/entities"
 	"github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
-	"github.com/jeagerism/medium-clone/backend/internal/entities"
 	"github.com/jeagerism/medium-clone/backend/pkg/utils"
 )
 
@@ -24,7 +24,8 @@ func (s *articleService) GetArticles(params entities.GetArticlesParams) (getAllR
 	if err != nil {
 		return getAllResponse{}, ErrArticlesNotFound
 	}
-
+	fmt.Println("search", params.Search)
+	fmt.Println("tags", params.Tags)
 	var count int
 	if len(articleRepo) == 0 {
 		count = 0
@@ -62,6 +63,16 @@ func (s *articleService) GetArticleByID(id int) (getArticleByIDResponse, error) 
 	}
 
 	return article, nil
+}
+
+func (s *articleService) GetArticleByUserID(req entities.GetArticlesByUserIDParams) ([]entities.ArticleResponse, error) {
+	req.Offset = utils.CalculateOffset(req.Page, req.Limit)
+
+	articles, err := s.articleRepository.FindArticlesByUserID(req)
+	if err != nil {
+		return []entities.ArticleResponse{}, ErrArticlesNotFound
+	}
+	return articles, nil
 }
 
 func (s *articleService) AddArticle(req entities.AddArticleRequest) error {

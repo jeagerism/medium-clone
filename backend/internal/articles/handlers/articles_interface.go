@@ -10,5 +10,6 @@ type ArticleHandler interface {
 	AddCommentHandler(c *gin.Context)
 	DeleteArticleHandler(c *gin.Context)
 	DeleteCommentHandler(c *gin.Context)
+	GetArticleByUserIDHandler(c *gin.Context)
 	GetArticleCommentsHandler(c *gin.Context)
 }

@@ -79,5 +79,6 @@ func (s *ginServer) userRoutes() {
 	routes := s.app.Group("/user")
 	{
 		routes.GET("/@:id", userHand.GetUserProfileHandler)
+		routes.POST("/following", userHand.AddFollowHandler)
 	}
 }

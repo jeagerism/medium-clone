@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jeagerism/medium-clone/backend/internal/users/entities"
+	"github.com/jeagerism/medium-clone/backend/pkg/logger"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -71,4 +72,14 @@ func (r *userRepository) FindUser(id int) (*entities.UserWithStats, error) {
 
 	// Return the user with stats
 	return &user, nil
+}
+
+func (r *userRepository) SaveFollowing(req entities.UserAddFollowingRequest) error {
+	query := `INSERT INTO follows (follower_id,following_id) VALUES ($1,$2);`
+	_, err := r.db.Exec(query, req.FollowerID, req.FollowingID)
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to save following '%d' & '%d': %w", req.FollowerID, req.FollowingID, err))
+		return fmt.Errorf("failed to save following '%d' & '%d': %w", req.FollowerID, req.FollowingID, err)
+	}
+	return nil
 }

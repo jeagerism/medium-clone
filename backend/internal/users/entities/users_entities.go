@@ -13,3 +13,8 @@ type UserWithStats struct {
 	FollowerCount int      `json:"follower_count" db:"follower_count"`
 	Following     []Follow `json:"following" db:"following"`
 }
+
+type UserAddFollowingRequest struct {
+	FollowerID  int `json:"follower_id"`
+	FollowingID int `json:"following_id"`
+}

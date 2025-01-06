@@ -23,3 +23,10 @@ func (s *userService) GetUserProfile(id int) (*entities.UserWithStats, error) {
 	}
 	return user, nil
 }
+
+func (s *userService) AddFollowing(req entities.UserAddFollowingRequest) error {
+	if err := s.userRepo.SaveFollowing(req); err != nil {
+		return ErrFailedToFollow
+	}
+	return nil
+}

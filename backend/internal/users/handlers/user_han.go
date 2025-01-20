@@ -35,14 +35,44 @@ func (h *userHandler) GetUserProfileHandler(c *gin.Context) {
 
 func (h *userHandler) AddFollowHandler(c *gin.Context) {
 	var req entities.UserAddFollowingRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid body request"})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON request"})
 		return
 	}
 
 	if err := h.userServ.AddFollowing(req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Following added"})
+}
+
+func (h *userHandler) DeleteFollowHandler(c *gin.Context) {
+	var req entities.UserAddFollowingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON request"})
+		return
+	}
+
+	if err := h.userServ.DeleteFollowing(req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Follow deleted"})
+}
+
+func (h *userHandler) RegisterHandler(c *gin.Context) {
+	var req entities.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "following"})
+
+	user, err := h.userServ.Register(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, user)
 }

@@ -83,3 +83,42 @@ func (r *userRepository) SaveFollowing(req entities.UserAddFollowingRequest) err
 	}
 	return nil
 }
+
+func (r *userRepository) RemoveFollowing(req entities.UserAddFollowingRequest) error {
+	query := `DELETE FROM follows WHERE follower_id = $1 AND following_id = $2;`
+	_, err := r.db.Exec(query, req.FollowerID, req.FollowingID)
+	if err != nil {
+		logger.LogError(fmt.Errorf("failed to remove following '%d' & '%d': %w", req.FollowerID, req.FollowingID, err))
+		return fmt.Errorf("failed to remove following '%d' & '%d': %w", req.FollowerID, req.FollowingID, err)
+	}
+	return nil
+}
+
+func (r *userRepository) GetUserByEmail(email string) (*entities.UserCredentials, error) {
+	var userCreds entities.UserCredentials
+	query := `SELECT id, password FROM users WHERE email = $1;`
+
+	// Use a pointer to `userCreds` to allow `r.db.Get` to populate the struct correctly
+	err := r.db.Get(&userCreds, query, email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve user credentials: %w", err)
+	}
+
+	return &userCreds, nil
+}
+
+func (r *userRepository) CreateUser(user entities.User) (int, error) {
+	query := `
+		INSERT INTO users (name, email, password, role, bio)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id;
+	`
+
+	var userID int
+	err := r.db.QueryRow(query, user.Name, user.Email, user.Password, user.Role, user.Bio).Scan(&userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return userID, nil
+}

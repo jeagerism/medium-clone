@@ -73,12 +73,13 @@ func (s *ginServer) articleRoutes() {
 
 func (s *ginServer) userRoutes() {
 	userRepo := user_repo.NewUserRepository(s.db.GetDb())
-	userServ := user_svc.NewUserService(userRepo)
+	userServ := user_svc.NewUserService(userRepo, s.cfg) // ส่ง s.cfg เข้าไปใน NewUserService
 	userHand := user_han.NewUserHandler(userServ)
 
 	routes := s.app.Group("/user")
 	{
 		routes.GET("/@:id", userHand.GetUserProfileHandler)
 		routes.POST("/following", userHand.AddFollowHandler)
+		routes.DELETE("/following", userHand.DeleteFollowHandler)
 	}
 }

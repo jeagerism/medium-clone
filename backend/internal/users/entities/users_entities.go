@@ -18,3 +18,30 @@ type UserAddFollowingRequest struct {
 	FollowerID  int `json:"follower_id"`
 	FollowingID int `json:"following_id"`
 }
+
+type LoginRequest struct {
+	Email    string `json:"email" db:"email"`
+	Password string `json:"password" db:"password_hash"`
+}
+
+type UserCredentials struct {
+	ID       int    `db:"id"`
+	Password string `db:"password"`
+	Role     string `db:"role"`
+}
+
+type User struct {
+	ID       int    `db:"id"`
+	Name     string `db:"name"`
+	Email    string `db:"email"`
+	Password string `db:"password"`
+	Role     string `db:"role"`
+	Bio      string `db:"bio"`
+}
+
+type RegisterRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Bio      string `json:"bio"`
+}

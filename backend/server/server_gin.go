@@ -23,7 +23,7 @@ type ginServer struct {
 	cfg *config.Config
 }
 
-func NewGInServer(cfg *config.Config, db database.Database) Server {
+func NewGinServer(cfg *config.Config, db database.Database) Server {
 	gin.SetMode(gin.ReleaseMode)
 	ginApp := gin.New()
 	ginApp.Use(gin.Recovery())
@@ -43,7 +43,7 @@ func (s *ginServer) Start() {
 	s.articleRoutes()
 	s.userRoutes()
 
-	serverURL := fmt.Sprintf(":%d", s.cfg.Server.Port)
+	serverURL := fmt.Sprintf(":%d", s.cfg.Server().GetPort())
 	if err := s.app.Run(serverURL); err != nil {
 		log.Fatalf("Failed to start server: %v", err) // ใช้ log ของ Go
 	}
@@ -81,5 +81,9 @@ func (s *ginServer) userRoutes() {
 		routes.GET("/@:id", userHand.GetUserProfileHandler)
 		routes.POST("/following", userHand.AddFollowHandler)
 		routes.DELETE("/following", userHand.DeleteFollowHandler)
+		routes.POST("/login", userHand.LoginHandler)
+		routes.POST("/register", userHand.RegisterHandler)
+		routes.POST("/retoken", userHand.RefreshTokenHandler)
+
 	}
 }

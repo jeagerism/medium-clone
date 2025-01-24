@@ -1,84 +1,96 @@
 package config
 
 import (
-	"log"
-	"strings"
-	"sync"
+	"fmt"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
-type (
-	Config struct {
-		Server *Server
-		DB     *DB
-		JWT    *JWT // Add JWT here to ensure it's included in the final config structure
-	}
+// Config Struct
+type Config struct {
+	server *server
+	db     *db
+	jwt    *jwt
+}
 
-	Server struct {
-		Port int
-	}
+// jwt Struct (Implementation of ConfigProvider)
+type jwt struct {
+	SecretKey           string
+	AccessTokenExpired  time.Duration
+	RefreshTokenExpired time.Duration
+	Issuer              string
+}
 
-	DB struct {
-		Host     string
-		Port     int
-		User     string
-		Password string
-		DBName   string
-		SSLMode  string
-		Timezone string
-	}
+// ConfigProvider Interface
+type ConfigJWT interface {
+	GetJWTSecret() []byte
+	GetAccessTokenExpiry() time.Duration
+	GetRefreshTokenExpiry() time.Duration
+	GetIssuer() string
+}
 
-	JWT struct {
-		JWTSecret           string
-		AccessTokenExpired  time.Duration
-		RefreshTokenExpired time.Duration
-		Issuer              string
-	}
-)
+func (c *Config) JWT() ConfigJWT {
+	return c.jwt
+}
 
-var (
-	once           sync.Once
-	configInstance *Config
-)
+// Implementing ConfigProvider
+func (j *jwt) GetJWTSecret() []byte {
+	return []byte(j.SecretKey)
+}
 
-func GetConfig() *Config {
-	once.Do(func() {
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath("./config")
-		viper.AutomaticEnv()
-		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+func (j *jwt) GetAccessTokenExpiry() time.Duration {
+	return j.AccessTokenExpired
+}
 
-		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("Error reading config file: %v", err)
-		}
+func (j *jwt) GetRefreshTokenExpiry() time.Duration {
+	return j.RefreshTokenExpired
+}
 
-		// Unmarshal the general config into Config instance
-		if err := viper.Unmarshal(&configInstance); err != nil {
-			log.Fatalf("Unable to decode into struct: %v", err)
-		}
+func (j *jwt) GetIssuer() string {
+	return j.Issuer
+}
 
-		// Parse duration values for access and refresh token expiry
-		accessTEX, err := time.ParseDuration(viper.GetString("jwt.access_token_expired"))
-		if err != nil {
-			log.Fatalf("Invalid access token expiry: %v", err)
-		}
+type db struct {
+	host     string
+	port     int
+	user     string
+	password string
+	dbname   string
+	sslMode  string
+	timezone string
+}
 
-		refreshTEX, err := time.ParseDuration(viper.GetString("jwt.refresh_token_expired"))
-		if err != nil {
-			log.Fatalf("Invalid refresh token expiry: %v", err)
-		}
+type ConfigDB interface {
+	Url() string
+}
 
-		// Setting JWT struct values
-		configInstance.JWT = &JWT{
-			JWTSecret:           viper.GetString("jwt.jwt_secret"),
-			AccessTokenExpired:  accessTEX,
-			RefreshTokenExpired: refreshTEX,
-			Issuer:              viper.GetString("jwt.issuer"),
-		}
-	})
+func (c *Config) Db() ConfigDB {
+	return c.db
+}
 
-	return configInstance
+func (db *db) Url() string {
+	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+		db.host,
+		db.user,
+		db.password,
+		db.dbname,
+		db.port,
+		db.sslMode,
+		db.timezone,
+	)
+}
+
+type server struct {
+	port int
+}
+
+type ConfigServer interface {
+	GetPort() int
+}
+
+func (c *Config) Server() ConfigServer {
+	return c.server
+}
+
+func (s *server) GetPort() int {
+	return s.port
 }

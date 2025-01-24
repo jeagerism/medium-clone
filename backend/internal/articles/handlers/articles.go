@@ -31,12 +31,6 @@ func (h *articleHandler) GetArticlesHandler(c *gin.Context) {
 	if req.Limit <= 0 {
 		req.Limit = 10
 	}
-	// if len(req.Search) == 0 {
-	// 	req.Search = "all"
-	// }
-	// if len(req.Tags) == 0 {
-	// 	req.Tags = "all"
-	// }
 
 	// Call the service to fetch articles
 	articlesResponse, err := h.articleService.GetArticles(req) // Adjust service method to accept search and tags

@@ -1,15 +1,28 @@
 package main
 
 import (
+	"log"
+
 	"github.com/jeagerism/medium-clone/backend/config"
 	"github.com/jeagerism/medium-clone/backend/pkg/database"
 	"github.com/jeagerism/medium-clone/backend/server"
 )
 
 func main() {
-	cfg := config.GetConfig()
+	conf := config.GetConfig()
+	if conf == nil {
+		log.Fatalf("Failed to load configuration")
+	}
 
-	db := database.NewPostgresDatabase(cfg)
+	db, err := database.NewPostgresDatabase(conf)
+	if err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer db.GetDb().Close()
 
-	server.NewGInServer(cfg, db).Start()
+	log.Println("Database initialized successfully")
+
+	server.NewGinServer(conf, db).Start()
+
+	log.Println("Application started successfully")
 }

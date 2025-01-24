@@ -3,6 +3,7 @@ package repositories
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jeagerism/medium-clone/backend/internal/users/entities"
 	"github.com/jeagerism/medium-clone/backend/pkg/logger"
@@ -95,30 +96,85 @@ func (r *userRepository) RemoveFollowing(req entities.UserAddFollowingRequest) e
 }
 
 func (r *userRepository) GetUserByEmail(email string) (*entities.UserCredentials, error) {
-	var userCreds entities.UserCredentials
-	query := `SELECT id, password FROM users WHERE email = $1;`
+	logger.LogInfo(fmt.Sprintf("Querying user by email: %s", email))
 
-	// Use a pointer to `userCreds` to allow `r.db.Get` to populate the struct correctly
+	var userCreds entities.UserCredentials
+	query := `SELECT id, email, password_hash, role FROM users WHERE LOWER(email) = LOWER($1);`
+
 	err := r.db.Get(&userCreds, query, email)
 	if err != nil {
+		logger.LogError(fmt.Errorf("Failed to retrieve user credentials for email %s: %w", email, err))
 		return nil, fmt.Errorf("failed to retrieve user credentials: %w", err)
 	}
 
+	logger.LogInfo(fmt.Sprintf("Successfully retrieved user credentials for email: %s", email))
 	return &userCreds, nil
 }
 
 func (r *userRepository) CreateUser(user entities.User) (int, error) {
+	logger.LogInfo(fmt.Sprintf("Creating user: %+v", user))
+
 	query := `
-		INSERT INTO users (name, email, password, role, bio)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO users (name, email, password_hash, role, bio,profile_image)
+		VALUES ($1, $2, $3, $4, $5,$6)
 		RETURNING id;
 	`
 
 	var userID int
-	err := r.db.QueryRow(query, user.Name, user.Email, user.Password, user.Role, user.Bio).Scan(&userID)
+	err := r.db.QueryRow(query, user.Name, user.Email, user.Password, user.Role, user.Bio, user.ProfileImage).Scan(&userID)
 	if err != nil {
+		logger.LogError(fmt.Errorf("Failed to create user %+v: %w", user, err))
 		return 0, fmt.Errorf("failed to create user: %w", err)
 	}
 
+	logger.LogInfo(fmt.Sprintf("Successfully created user with ID: %d", userID))
 	return userID, nil
+}
+
+func (r *userRepository) SaveRefreshToken(userID int, token string, expiresAt time.Time) error {
+	query := `
+		INSERT INTO tokens (user_id, refresh_token, expires_at, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
+	`
+
+	_, err := r.db.Exec(query, userID, token, expiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to save refresh token: %w", err)
+	}
+
+	return nil
+}
+
+func (r *userRepository) UpdateRefreshToken(userID int, newToken string, expiresAt time.Time) error {
+	query := `
+		UPDATE tokens
+		SET refresh_token = $1, expires_at = $2, updated_at = NOW()
+		WHERE user_id = $3;
+	`
+
+	_, err := r.db.Exec(query, newToken, expiresAt, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update refresh token for user ID %d: %w", userID, err)
+	}
+
+	return nil
+}
+
+func (r *userRepository) GetRefresh(token string) (*entities.UserCredentials, error) {
+	var user entities.UserCredentials
+	query := `
+	SELECT
+		u.id ,
+		u.email ,
+		u."role"
+	FROM users u 
+	LEFT JOIN tokens t on u.id = t.user_id 
+	WHERE t.refresh_token = $1;
+	`
+	err := r.db.Get(&user, query, token)
+	if err != nil {
+		logger.LogError(fmt.Errorf("Failed to retrieve user credentials for refresh token %s: %w", token, err))
+		return nil, fmt.Errorf("failed to retrieve user credentials: %w", err)
+	}
+	return &user, nil
 }

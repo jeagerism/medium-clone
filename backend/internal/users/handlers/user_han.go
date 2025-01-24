@@ -61,6 +61,24 @@ func (h *userHandler) DeleteFollowHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Follow deleted"})
 }
 
+func (h *userHandler) LoginHandler(c *gin.Context) {
+	var req entities.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// เรียก Service Layer
+	response, err := h.userServ.Login(req)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// ส่ง Response
+	c.JSON(http.StatusOK, response)
+}
+
 func (h *userHandler) RegisterHandler(c *gin.Context) {
 	var req entities.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -75,4 +93,28 @@ func (h *userHandler) RegisterHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, user)
+}
+
+func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
+	// รับค่า Refresh Token จาก Body หรือ Header
+	var req struct {
+		RefreshToken string `json:"refresh_token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
+		return
+	}
+
+	// เรียก Service Layer เพื่อรีเฟรช Token
+	token, err := h.userServ.RefreshAccessToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// ส่งคืน Token ใหม่
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  token.AccessToken,
+		"refresh_token": token.RefreshToken,
+	})
 }

@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/jeagerism/medium-clone/backend/config"
@@ -17,35 +16,39 @@ type postgresDatabase struct {
 var (
 	once       sync.Once
 	dbInstance *postgresDatabase
+	initErr    error
 )
 
-func NewPostgresDatabase(conf *config.Config) Database {
-	once.Do(func() {
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
-			conf.DB.Host,
-			conf.DB.User,
-			conf.DB.Password,
-			conf.DB.DBName,
-			conf.DB.Port,
-			conf.DB.SSLMode,
-			conf.DB.Timezone,
-		)
+// NewPostgresDatabase initializes a singleton instance of the PostgreSQL database.
+func NewPostgresDatabase(conf *config.Config) (*postgresDatabase, error) {
+	if conf == nil {
+		return nil, fmt.Errorf("database configuration is missing")
+	}
 
+	once.Do(func() {
+		dsn := conf.Db().Url()
 		db, err := sqlx.Open("postgres", dsn)
 		if err != nil {
-			log.Fatalf("failed to open database: %v", err)
+			initErr = fmt.Errorf("failed to open database: %w", err)
+			return
 		}
 
 		if err = db.Ping(); err != nil {
-			log.Fatalf("failed to ping database: %v", err)
+			initErr = fmt.Errorf("failed to ping database: %w", err)
+			return
 		}
 
 		dbInstance = &postgresDatabase{DB: db}
 	})
 
-	return dbInstance
+	if initErr != nil {
+		return nil, initErr
+	}
+
+	return dbInstance, nil
 }
 
+// GetDb returns the underlying *sqlx.DB instance.
 func (p *postgresDatabase) GetDb() *sqlx.DB {
-	return dbInstance.DB
+	return p.DB
 }

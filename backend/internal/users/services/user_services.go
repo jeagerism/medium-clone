@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jeagerism/medium-clone/backend/config"
 	"github.com/jeagerism/medium-clone/backend/internal/users/entities"
 	"github.com/jeagerism/medium-clone/backend/internal/users/repositories"
+	"github.com/jeagerism/medium-clone/backend/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,42 +46,59 @@ func (s *userService) DeleteFollowing(req entities.UserAddFollowingRequest) erro
 	return nil
 }
 
-func (s *userService) Login(req entities.LoginRequest) (*entities.UserWithStats, string, error) {
+func (s *userService) Login(req entities.LoginRequest) (*entities.UserProfileResponse, error) {
 	// ตรวจสอบว่าผู้ใช้งานมีอยู่ในระบบหรือไม่
 	user, err := s.userRepo.GetUserByEmail(req.Email)
 	if err != nil {
-		return nil, "", ErrUserNotFound
+		return nil, ErrUserNotFound
 	}
 
 	// ตรวจสอบความถูกต้องของรหัสผ่าน
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, "", ErrInvalidPassword
+		return nil, ErrInvalidPassword
 	}
 
-	// เตรียมข้อมูล Claims สำหรับ JWT
-	claims := jwt.MapClaims{
-		"email":   req.Email,
-		"user_id": user.ID,
-		"role":    user.Role,
-		"exp":     time.Now().Add(s.config.GetAccessTokenExpiry()).Unix(), // ใช้ค่า timeout จาก Config
-	}
-
-	// สร้าง JWT Token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	secretKey := s.config.GetJWTSecret() // ดึง Secret Key จาก Config
-	t, err := token.SignedString([]byte(secretKey))
+	// สร้าง Access Token
+	accessToken, err := utils.GenerateAccessToken(
+		user.ID,
+		user.Email,
+		user.Role,
+		string(s.config.JWT().GetJWTSecret()),
+		s.config.JWT().GetAccessTokenExpiry(),
+	)
 	if err != nil {
-		return nil, "", ErrGenToken
+		return nil, ErrGenToken
 	}
 
-	// ดึงข้อมูลผู้ใช้งานเพิ่มเติม
-	userProfile, err := s.userRepo.FindUser(user.ID)
+	// สร้าง Refresh Token
+	refreshToken, err := utils.GenerateRefreshToken(
+		user.ID,
+		string(s.config.JWT().GetJWTSecret()),
+		s.config.JWT().GetRefreshTokenExpiry(),
+	)
 	if err != nil {
-		return nil, "", ErrUserNotFound
+		return nil, ErrGenToken
 	}
 
-	// ส่งคืนข้อมูลโปรไฟล์ผู้ใช้พร้อม JWT Token
-	return userProfile, t, nil
+	// บันทึก Refresh Token ในฐานข้อมูล
+	err = s.userRepo.SaveRefreshToken(user.ID, refreshToken, time.Now().Add(s.config.JWT().GetRefreshTokenExpiry()))
+	if err != nil {
+		return nil, ErrGenToken
+	}
+
+	// ส่งคืนข้อมูล User พร้อม Access Token และ Refresh Token
+	return &entities.UserProfileResponse{
+		User: &entities.User{
+			ID:    user.ID,
+			Email: req.Email,
+			Role:  user.Role,
+		},
+		Token: &entities.UserToken{
+			ID:           fmt.Sprintf("%d", user.ID),
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		},
+	}, nil
 }
 
 func (s *userService) Register(req entities.RegisterRequest) (*entities.UserWithStats, error) {
@@ -99,11 +116,12 @@ func (s *userService) Register(req entities.RegisterRequest) (*entities.UserWith
 
 	// สร้างข้อมูลผู้ใช้งานใหม่
 	newUser := entities.User{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Role:     "user", // ค่าเริ่มต้นสำหรับ Role
-		Bio:      req.Bio,
+		Name:         req.Name,
+		Email:        req.Email,
+		Password:     string(hashedPassword),
+		Role:         "user", // ค่าเริ่มต้นสำหรับ Role
+		Bio:          req.Bio,
+		ProfileImage: req.ProfileImage,
 	}
 
 	// บันทึกผู้ใช้งานใหม่ลงในฐานข้อมูล
@@ -112,11 +130,63 @@ func (s *userService) Register(req entities.RegisterRequest) (*entities.UserWith
 		return nil, ErrCreateUserFailed
 	}
 
-	// ดึงข้อมูลโปรไฟล์ผู้ใช้งานใหม่
-	createdUser, err := s.userRepo.FindUser(userID)
+	return s.GetUserProfile(userID)
+}
+
+func (s *userService) RefreshAccessToken(refreshToken string) (*entities.UserToken, error) {
+	// ตรวจสอบ Refresh Token
+	_, claims, err := utils.ValidateToken(refreshToken, string(s.config.JWT().GetJWTSecret()))
 	if err != nil {
+		return nil, fmt.Errorf("invalid refresh token: %w", err)
+	}
+
+	// ตรวจใน DB
+	user, err := s.userRepo.GetRefresh(refreshToken)
+	if err != nil {
+		return nil, ErrGenToken
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("user_id is missing or invalid in token claims")
+	}
+	userID := int(userIDFloat)
+
+	if userID != user.ID {
 		return nil, ErrUserNotFound
 	}
 
-	return createdUser, nil
+	// สร้าง Access Token ใหม่
+	newAccessToken, err := utils.GenerateAccessToken(
+		user.ID,
+		user.Email,
+		user.Role,
+		string(s.config.JWT().GetJWTSecret()),
+		s.config.JWT().GetAccessTokenExpiry(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new access token: %w", err)
+	}
+
+	// สร้าง Refresh Token ใหม่
+	newRefreshToken, err := utils.GenerateRefreshToken(
+		user.ID,
+		string(s.config.JWT().GetJWTSecret()),
+		s.config.JWT().GetRefreshTokenExpiry(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate new refresh token: %w", err)
+	}
+
+	// อัปเดต Refresh Token ในฐานข้อมูล
+	expiresAt := time.Now().Add(s.config.JWT().GetRefreshTokenExpiry())
+	if err := s.userRepo.UpdateRefreshToken(user.ID, newRefreshToken, expiresAt); err != nil {
+		return nil, fmt.Errorf("failed to update refresh token: %w", err)
+	}
+
+	// ส่งคืน Token ใหม่
+	return &entities.UserToken{
+		AccessToken:  newAccessToken,
+		RefreshToken: newRefreshToken,
+	}, nil
 }

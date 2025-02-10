@@ -84,6 +84,6 @@ func (s *ginServer) userRoutes() {
 		routes.POST("/login", userHand.LoginHandler)
 		routes.POST("/register", userHand.RegisterHandler)
 		routes.POST("/retoken", userHand.RefreshTokenHandler)
-
+		routes.POST("/logout", userHand.LogoutHandler)
 	}
 }

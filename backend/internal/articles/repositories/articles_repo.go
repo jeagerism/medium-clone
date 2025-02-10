@@ -48,8 +48,6 @@ func (r *articleRepository) FindArticles(params entities.GetArticlesParams) ([]e
 	LIMIT $3 OFFSET $4;
 
 	`
-	fmt.Println("search", params.Search)
-	fmt.Println("tags", params.Tags)
 
 	err := r.db.Select(&articles, query, params.Search, params.Tags, params.Limit, params.Offset)
 	if err != nil {

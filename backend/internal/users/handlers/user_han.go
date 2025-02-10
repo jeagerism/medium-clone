@@ -118,3 +118,24 @@ func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
 		"refresh_token": token.RefreshToken,
 	})
 }
+
+func (h *userHandler) LogoutHandler(c *gin.Context) {
+	// ดึง user_id จาก Context ที่ได้จาก Middleware
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// เรียก Service เพื่อลบ Refresh Token
+	err := h.userServ.Logout(userID.(int))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// ล้าง Cookie (ถ้ามีการใช้ HTTP-Only Cookie)
+	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}

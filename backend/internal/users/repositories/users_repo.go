@@ -178,3 +178,9 @@ func (r *userRepository) GetRefresh(token string) (*entities.UserCredentials, er
 	}
 	return &user, nil
 }
+
+func (r *userRepository) DeleteRefreshToken(userID int) error {
+	query := `DELETE FROM tokens WHERE user_id = $1;`
+	_, err := r.db.Exec(query, userID)
+	return err
+}

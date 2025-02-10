@@ -9,4 +9,5 @@ type UserService interface {
 	Login(req entities.LoginRequest) (*entities.UserProfileResponse, error)
 	Register(req entities.RegisterRequest) (*entities.UserWithStats, error)
 	RefreshAccessToken(refreshToken string) (*entities.UserToken, error)
+	Logout(userID int) error
 }

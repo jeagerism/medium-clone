@@ -15,4 +15,5 @@ type UserRepository interface {
 	SaveRefreshToken(userID int, token string, expiresAt time.Time) error
 	UpdateRefreshToken(userID int, newToken string, expiresAt time.Time) error
 	GetRefresh(token string) (*entities.UserCredentials, error)
+	DeleteRefreshToken(userID int) error
 }

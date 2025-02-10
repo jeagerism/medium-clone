@@ -190,3 +190,12 @@ func (s *userService) RefreshAccessToken(refreshToken string) (*entities.UserTok
 		RefreshToken: newRefreshToken,
 	}, nil
 }
+
+func (s *userService) Logout(userID int) error {
+	// ลบ Refresh Token ของผู้ใช้จากฐานข้อมูล
+	err := s.userRepo.DeleteRefreshToken(userID)
+	if err != nil {
+		return fmt.Errorf("failed to logout user: %w", err)
+	}
+	return nil
+}

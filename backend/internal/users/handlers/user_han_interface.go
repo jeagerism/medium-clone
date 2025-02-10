@@ -9,4 +9,5 @@ type UserHandler interface {
 	LoginHandler(c *gin.Context)
 	RegisterHandler(c *gin.Context)
 	RefreshTokenHandler(c *gin.Context)
+	LogoutHandler(c *gin.Context)
 }

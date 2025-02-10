@@ -24,8 +24,7 @@ func (s *articleService) GetArticles(params entities.GetArticlesParams) (getAllR
 	if err != nil {
 		return getAllResponse{}, ErrArticlesNotFound
 	}
-	fmt.Println("search", params.Search)
-	fmt.Println("tags", params.Tags)
+
 	var count int
 	if len(articleRepo) == 0 {
 		count = 0

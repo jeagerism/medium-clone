@@ -72,3 +72,8 @@ type GetArticleCommentsResponse struct {
 	UserName   string    `db:"name" json:"name"`
 	ProfileImg string    `db:"profile_image" json:"profile_image"`
 }
+
+type Comment struct {
+	ID     int `db:"id"`
+	UserID int `db:"user_id"`
+}

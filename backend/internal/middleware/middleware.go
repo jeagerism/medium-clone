@@ -80,3 +80,46 @@ func Authorization(allowedRoles ...UsersRole) gin.HandlerFunc {
 		c.Abort()
 	}
 }
+
+func RequireAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, exists := c.Get("user_id")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func RequireRole(roles ...UsersRole) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleValue, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"message": "Forbidden: No role found"})
+			c.Abort()
+			return
+		}
+
+		// แปลง roleValue เป็น string
+		role, ok := roleValue.(string)
+		if !ok {
+			c.JSON(http.StatusForbidden, gin.H{"message": "Forbidden: Invalid role type"})
+			c.Abort()
+			return
+		}
+
+		// ตรวจสอบบทบาท
+		for _, allowedRole := range roles {
+			if role == string(allowedRole) {
+				c.Next()
+				return
+			}
+		}
+
+		// หากบทบาทไม่ตรงกับที่อนุญาต
+		c.JSON(http.StatusForbidden, gin.H{"message": "Forbidden: You do not have permission"})
+		c.Abort()
+	}
+}

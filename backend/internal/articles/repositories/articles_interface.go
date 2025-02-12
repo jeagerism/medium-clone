@@ -18,4 +18,5 @@ type ArticleRepository interface {
 	SaveComment(req entities.AddCommentRequest) error
 	RemoveComment(id int) error
 	FindArticleComments(id int) ([]entities.GetArticleCommentsResponse, error)
+	FindCommentByID(commentID int) (*entities.Comment, error)
 }

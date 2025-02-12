@@ -37,4 +37,5 @@ type ArticleService interface {
 	AddComment(req entities.AddCommentRequest) error
 	DeleteComment(id int) error
 	GetArticleComments(id int) ([]entities.GetArticleCommentsResponse, error)
+	GetCommentByID(commentID int) (*entities.Comment, error)
 }

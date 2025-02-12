@@ -204,3 +204,11 @@ func (s *articleService) GetArticleComments(id int) ([]entities.GetArticleCommen
 	}
 	return comments, nil
 }
+
+func (s *articleService) GetCommentByID(commentID int) (*entities.Comment, error) {
+	comment, err := s.articleRepository.FindCommentByID(commentID)
+	if err != nil {
+		return nil, fmt.Errorf("comment not found: %w", err)
+	}
+	return comment, nil
+}

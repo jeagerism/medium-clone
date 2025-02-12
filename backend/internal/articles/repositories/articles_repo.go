@@ -316,3 +316,16 @@ func (r *articleRepository) FindArticleComments(id int) ([]entities.GetArticleCo
 
 	return comments, nil
 }
+
+func (r *articleRepository) FindCommentByID(commentID int) (*entities.Comment, error) {
+	var comment entities.Comment
+	query := `SELECT id, user_id FROM comments WHERE id = $1`
+	err := r.db.Get(&comment, query, commentID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("comment not found")
+		}
+		return nil, fmt.Errorf("failed to retrieve comment: %w", err)
+	}
+	return &comment, nil
+}

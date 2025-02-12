@@ -9,6 +9,7 @@ import (
 	article_han "github.com/jeagerism/medium-clone/backend/internal/articles/handlers"
 	article_repo "github.com/jeagerism/medium-clone/backend/internal/articles/repositories"
 	article_svc "github.com/jeagerism/medium-clone/backend/internal/articles/services"
+	middlewares "github.com/jeagerism/medium-clone/backend/internal/middleware"
 
 	user_han "github.com/jeagerism/medium-clone/backend/internal/users/handlers"
 	user_repo "github.com/jeagerism/medium-clone/backend/internal/users/repositories"
@@ -56,18 +57,21 @@ func (s *ginServer) articleRoutes() {
 
 	routes := s.app.Group("/articles")
 	{
-		// Articles API
 		routes.GET("", arcHand.GetArticlesHandler)
 		routes.GET("/:id", arcHand.GetArticleByIDHandler)
-		routes.POST("", arcHand.AddArticleHandler)
-		routes.PUT("", arcHand.UpdateArticleHandler)
-		routes.DELETE("", arcHand.DeleteArticleHandler)
-		routes.GET("list", arcHand.GetArticleByUserIDHandler)
 
-		// Comment API
-		routes.POST("/comment", arcHand.AddCommentHandler)
-		routes.DELETE("/comment", arcHand.DeleteCommentHandler)
-		routes.GET("/:id/comments", arcHand.GetArticleCommentsHandler)
+		// ใช้ Middleware Authentication เท่านั้น
+		protected := routes.Group("").Use(middlewares.JwtAuthentication(string(s.cfg.JWT().GetJWTSecret())), middlewares.RequireAuth())
+		{
+			protected.POST("", arcHand.AddArticleHandler)
+			protected.PUT("", arcHand.UpdateArticleHandler)
+			protected.DELETE("", arcHand.DeleteArticleHandler) // Admin & Owner check ใน handler
+			protected.GET("list", arcHand.GetArticleByUserIDHandler)
+
+			protected.POST("/comment", arcHand.AddCommentHandler)
+			protected.DELETE("/comment", arcHand.DeleteCommentHandler) // Admin & Owner check ใน handler
+			protected.GET("/:id/comments", arcHand.GetArticleCommentsHandler)
+		}
 	}
 }
 
